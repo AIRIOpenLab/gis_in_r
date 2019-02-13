@@ -1,0 +1,201 @@
+---
+title: "Geostatistica e interpolazione spaziale"
+author: "Marcello Barisonzi, codice di Jean-Michel Floch"
+output: 
+  tufte::tufte_handout:
+    fig_width: 12
+    fig_height: 9
+  tufte::tufte_html: default
+---
+
+
+```{r setup, include=FALSE}
+library(tufte)
+library(xtable)
+
+## libraries needed for R code examples
+library(geoR)
+
+## knitr options
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(global.par = TRUE)
+
+# See https://stackoverflow.com/questions/25646333/code-chunk-font-size-in-rmarkdown-with-knitr-and-latex
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) 
+  {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n\\normalsize"), x)
+  })
+```
+
+***
+
+Benvenuti a questa lezione di Geostatistica, liberamente tratta dal Capitolo 5 dell'_Handbook of Spatial Analysis_, pubblicato dall'_INSEE_, l'istituto nazionale francese per la statistica e gli studi economici.
+Il manuale è disponibile gratuitamente in inglese ed in francese ed è scaricabile [da questo sito](https://ec.europa.eu/eurostat/web/products-manuals-and-guidelines/-/INSEE-ESTAT-SPATIAL-ANA).
+
+È vivamente consigliato di leggere attentamente la parte teorica del capitolo prima di cimentarsi col codice.
+
+***
+
+# 1. Installazione delle librerie
+
+Per questa lezione, abbiamo bisogno della libreria `geoR`, una libreria di geostatistica sviluppata dal _[Centre de Géosciences MINES ParisTech](http://www.geosciences.mines-paristech.fr/en)_
+
+__Su Windows:__
+
+Esegui nella console di R: `install.packages("geoR")`
+
+__Su Linux:__
+
+1. Installa la libreria `libtk8.6` e le sue dipendenze (i dettagli dipendono da che distribuzione Linux usi).
+
+2. Esegui nella console di R: `install.packages("geoR")`
+
+__Su Mac:__
+
+???
+
+# 2. Esplorazione dei dati
+
+I dati che useremo sono inclusi nella libreria `geoR` e rappresentano le precipitazioni misurate da 467 stazioni meteorologiche svizzere nel giorno 8 maggio 1986.
+Per ogni stazione sono indicate la precipitazione (in millimetri), le coordinate geografiche e l'altitudine.
+
+I dati sono ripartiti in tre insiemi:
+
+* `sic.100`: un campione di 100 stazioni da usare per modellizzare le interpolazioni spaziali;
+* `sic.367`: le restanti stazioni, un campione da usare per validare le interpolazioni;
+* `sic.all`: tutti i dati.
+
+Inoltre, l'insieme di dati `sic.borders` contiene i confini della Svizzera.
+
+Visualizziamo in verde i dati che useremo per l'interpolazione, e in rosso i dati di validazione:
+
+```{R, eval=TRUE}
+library(geoR) # carica la libreria
+points(sic.100, borders=sic.borders, col="green")
+points(sic.367, borders=sic.borders, col="red", add=TRUE)
+```
+Questo grafico ci dà la posizione delle stazioni metereologiche, ma non ci dà alcuna altra informazione. Per informazione più dettagliate possiamo usare la funzione `plot.geodata`:
+
+```{R, eval=TRUE}
+plot.geodata(sic.100, bor=sic.borders)
+```
+
+I quattro grafici rappresentano nell'ordine:
+* in alto a sinistra: precipitazioni divise per quartile^[nell'ordine: blu-primo, verde-secondo, giallo-terzo, rosso-quarto quartile.];
+* in alto a destra: precipitazione per latitudine (coordinata _Y_);
+* in basso a sinistra: precipitazione per longtudine (coordinata _X_);
+* in basso a destra: istogramma delle precipitazioni.
+
+ L'istogramma ci mostra che i dati delle precipitazioni non hanno una distribuzione normale, quindi dovranno essere trasformati per ottimizzare la modellizzazione.
+
+## Variogramma sperimentale
+
+Secondo la _Prima Legge della Geografia_ di Tobler, "tutto è correlato, ma oggetti vicini tra loro sono più correlati di oggetti lontani"^[Tobler W., (1970) "A computer movie simulating urban growth in the Detroit region". Economic Geography, 46(Supplement): 234-240.].
+Dal punto di vista dei dati, questo principio si può mostrare con l'uso di un _variogramma sperimentale_. Questo grafico viene costruito calcolando, per ogni coppia di punti dati^[Per una variabile $Z$ definita nei punti $(s_1,...,s_n)$], la distanza geografica^[$||s_i-s_j||$] e la semivarianza^[$\frac{1}{2}[z(s_i)-z(s_j)]^2$].
+Tracciando la semivarianza in funzione della distanza, si può notare come la semivarianza cresca quasi linearmente fino ad una distanza definita, per poi rimanere pressoché costante. Questa distanza viene definita in letteratura come _range_ e indica la scala oltre la quale i fenomeni di correlazione diventano trascurabili.
+Il valore della semivarianza alla distanza 0 viene indicato in letteratura come _nugget_ e, se diverso da 0, può indicare un errore strumentale^[Com'è fisicamente possibile avere due misurazioni a distanza _esattamente_ pari a zero?] oppure un punto di effetiva discontinuità nella distribuzione dei dati^[Se stai misurando la concentrazione d'oro in un campione di minerale e trovi una pepita... la concentrazione sarà 100% per ogni punto all'interno della pepita!]
+
+```{R, eval=TRUE}
+vario.ex <- variog(sic.100, bin.cloud=TRUE)
+plot(vario.ex)
+```
+
+Il variogramma prodotto assume un effetto isotropico, ma possiamo anche tracciare 4 variogrammi a seconda di quattro direzioni (a $0^o$, $45^o$, $90^o$ e $135^o$ rispetto all'asse $Y$):
+
+```{R, eval=TRUE}
+vario4 <- variog4(sic.100)
+plot(vario4, same=FALSE)
+```
+ 
+# 3. Modellizzazione del variogramma
+ 
+Per essere in grado di interpolare i dati, dobbiamo in primo luogo modellizzare il variogramma. La funzione che cerchiamo deve intercettare l'origine degli assi^[oppure no, se siamo in presenza di un effetto _nugget_ rilevante], crescere in maniera pressoché costante fino alla distanza di _range_, per poi appiattirsi. Ci sono molte funzioni adatte allo scopo, per una lista completa potete fare riferimento alla Sezione 5.3.2 del manuale di analisi spaziale dell'INSEE.
+Per il momento ci limiteremo a quattro funzioni: sferica, esponenziale con o senza _nugget_, e funzione di Matern.
+ 
+```{R, eval=TRUE}
+vario.ex <- variog(sic.100, option="bin")
+par(mfrow=c(2,2), mar=c(3,3,1,1), mgp=c(2,1,0)) # griglia 2x2 plot
+
+# funzione sferica
+plot(vario.ex, main="funz. sferica") # plot dei punti
+vario.sphe <-(variofit(vario.ex, cov.model="spher", ini.cov.pars=c(15000,100))) # fit della funzione sferica ai dati
+lines.variomodel(cov.model="sphe", cov.pars=vario.sphe$cov.pars, nug=0, max.dist=350) # plot della funzione
+
+# funzione esponenziale 
+plot(vario.ex, main="funz. esponenziale") 
+vario.exp1 <- (variofit(vario.ex, cov.model="exp", ini.cov.pars=c(15000, 100))) 
+lines.variomodel(cov.model="exp", cov.pars=vario.exp1$cov.pars, nug=0, max.dist=350) 
+
+# funzione esponenziale con nugget 
+plot(vario.ex, main="funz. esponenziale con nugget")
+vario.exp2 <- (variofit(vario.ex, cov.model="exp", ini.cov.pars=c(15000, 100), fix.nugget=TRUE, nugget=5000))
+lines.variomodel(cov.model="exp", cov.pars=vario.exp2$cov.pars, nug=5000, max.dist=350)
+
+# funzione di Matern
+plot(vario.ex, main="funz. di Matern")
+vario.mat <- (variofit(vario.ex, cov.model="matern", ini.cov.pars=c(15000, 100)))
+lines.variomodel(cov.model="matern", cov.pars=vario.mat$cov.pars, nug=0, max.dist=350, k=vario.mat$kappa) # il parametro kappa è obbligatorio qui
+ ```
+  
+Le funzioni utilizzate fittano tutte abbastanza bene i punti sperimentali, e la scelta di una funzione piuttosto di un'altra risiede nella conoscenza del fenomeno che stiamo esplorando^[Come possiamo ad esempio giustificare un effetto _nugget_ diverso da zero nel caso della pioggia?].
+
+# Kriging ordinario
+
+Con il termine _kriging_ si indica un metodo di interpolazione spaziale sviluppato d D. Krige e G. Matheron. Per la spiegazione teorica, si rimanda alla Sezione 5.4.1 del manuale INSEE.
+
+In breve, il metodo di _kriging_ consente di stimare il valore della variabile $Z$ in un punto dove non si hanno misurazioni, calcolando una combinazione lineare dei valori di $Z$ nei punti misurati, usando una matrice di correlazione ottenuta dal variogramma modellizzato e dalla distanza del punto sconosciuto dai punti noti.
+Prendiamo i parametri della funzione sferica^[Eserczio: puoi divertirti ad usare anche le altre funzioni e fare un paragone!] `var.sphe` fittata in precedenza e creiamo un modello di _kriging_:
+
+```{R, eval=TRUE}
+krige.model <- krige.control(obj.model=vario.sphe)
+``` 
+
+Poi, prepariamo una griglia di punti dove valuteremo il modello di _kriging_, e una scala di colori che utilizzeremo per visualizzare i punti:
+
+```{R, eval=TRUE}
+pred.grid <- expand.grid(seq(0, 350, l=51), seq(0, 220, l=51))
+rgb.palette <- colorRampPalette(c("blue", "lightblue", "orange", "red"), space="rgb")
+```
+
+E per finire, chiediamo al modello di _kriging_ di stimare la precipitazione e la varianza della stima, e visualizziamo il tutto sulla carta della Svizzera.
+
+```{R, eval=TRUE}
+kc <- krige.conv(sic.100, loc=pred.grid, krige=krige.model)
+image(kc, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Stima della precipitazione") # stima
+image(kc, krige.var, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Varianza") # varianza, contenuta in krige.var
+```
+
+Il modello sembra convincente, ma non sappiamo quanto sia accurato. Per poter fare una valutazione, tracciamo i residui per le 100 osservazioni che abbiamo usato per il nostro modello di interpolazione, ma anche per le 367 osservazioni che non abbiamo utilizzato, e che quindi rappresentano un valido campione di controllo.
+
+```{R, eval=TRUE}
+kc.100 <- krige.conv(sic.100, loc=sic.100$coords, krige=krige.model)
+kc.367 <- krige.conv(sic.100, loc=sic.367$coords, krige=krige.model) # il primo parametro è lo stesso della linea precedente. Perché?
+plot(sic.100$data, kc.100$predict, xlab="Osservazioni", ylab="Stime", main="Punti di interpolazione")
+abline(a=0, b=1, col="red")
+plot(sic.367$data, kc.367$predict, xlab="Osservazioni", ylab="Stime", main="Campione di controllo")
+abline(a=0, b=1, col="red")
+```
+
+Per i punti di interpolazione, i valori sono esattamente sulla bisettrice, il che ci indica che il nostro modello di _kriging_ non è _biased_. Stessa considerazione si può fare per il campione di controllo, quindi la nostra modellizzazione è accettabile.
+
+## Esercizio 1
+
+Prova a sovrapporre i punti dell'insieme `sic.100`, usati per il modello di interpolazione, al grafico della varianza. Che cosa noti?
+
+\newpage
+
+## Soluzione dell'Esercizio 1
+
+Il codice che puoi usare è:
+
+```{R, eval=TRUE}
+par(mfrow=c(1,1))
+image(kc, krige.var, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Varianza")
+points(sic.100, borders=sic.borders, col="green", add=TRUE)
+```
+
+I due grafici sovrapposti ti mostrano che la varianza (l'errore) della stima è minima in prossimità delle stazioni meteorologiche. Questa rivelazione è abbastanza ovvia se ripensi alla figura del variogramma sperimentale: i punti più vicini hanno misurazioni più fortemente correlate.
+Negli estremi occidentale e orientale della Svizzera non ci sono stazioni meteorologiche vicine^[O perlomeno, il campione `sic.100` non ne contiene.] e difatti qui l'errore raggiunge i suoi massimi.
+
