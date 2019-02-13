@@ -2,13 +2,16 @@
 title: "Spatial Data in R"
 author: "By Nick Eubank, Building off excellent tutorials by Claudia Engel"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
   html_document:
-    toc: true
-    toc_depth: 4
-    theme: spacelab
-    mathjax: default
-    fig_width: 6
     fig_height: 6
+    fig_width: 6
+    mathjax: default
+    theme: spacelab
+    toc: yes
+    toc_depth: 4
 ---
 
 ```{r knitr_init, echo=FALSE, results='hide', cache=FALSE,message=FALSE, warning=FALSE}
@@ -41,7 +44,7 @@ Welcome to Spatial Data in R! This first set of tutorials (in three parts) is de
 
 ## 1. Updating R and Getting RStudio
 
-* It's best the everyone works with the same version of R to avoid problems, so please start by updating your installation of R to 3.2.3 ("Wooden Christmas-Tree"). [Installers for R 3.2.3 can be found here.](http://cran.cnr.berkeley.edu/)
+* It's best the everyone works with the same version of R to avoid problems, so please start by updating your installation of R to 3.5.2 ("Eggshell Igloo"). [Installers for R 3.5.2 can be found here.](http://cran.cnr.berkeley.edu/)
 
 * Download the most recent version of [RStudio here](https://www.rstudio.com/products/rstudio/download/). RStudio has recently added some very nice features (like tab completion), so please update if you have an older version. 
 
@@ -59,19 +62,27 @@ __On Windows:__
 
 Just run: `install.packages(c("sp", "raster", "rgdal"))`
 
+__On Linux:__
+
+1. Install the `libgdal-dev` and `libproj-dev` packages and all their dependencies
+
+2. Test that the installation is correct by typing `gdal-config`
+
+3. run in the R console: `install.packages(c("sp", "raster", "rgdal"))`
+
 __On Mac:__
 
-1. Download [GDAL complete](http://www.kyngchaos.com/files/software/frameworks/GDAL_Complete-1.11.dmg)
+1. Download [GDAL complete](http://www.kyngchaos.com/files/software/frameworks/GDAL_Complete-2.3.dmg)
 
 2. Doubleclick and install the `.dmg` file as you are used to on a Mac
 
-3. Make sure you have R Version 3.2.3 installed -- if not update it.
+3. Make sure you have R Version 3.5.2 installed -- if not update it.
 
-4. Download the [rgdal](https://cran.r-project.org/bin/macosx/mavericks/contrib/3.2/rgdal_1.0-4.tgz) package from CRAN.
+4. Download the [rgdal](https://cran.r-project.org/bin/macosx/el-capitan/contrib/3.5/rgdal_1.3-6.tgz) package from CRAN.
 
-5. Place the downloaded `rgdal_1.0-4.tgz` in your Desktop folder
+5. Place the downloaded `rgdal_1.3-6.tgz` in your Desktop folder
 
-7. Run `install.packages("~/Desktop/rgdal1.0-4.tgz", repos=NULL)`
+7. Run `install.packages("~/Desktop/rgdal1.3-6.tgz", repos=NULL)`
 
 8. Install `raster` and `sp` by running: `install.packages(c("sp","raster"))`
 
