@@ -56,3 +56,10 @@ rsconnect
 .Rhistory
 
 archive
+
+# Eclipse Rstudio and TeX #
+###################
+.TinyTeX/
+.project
+.rstudio/
+
