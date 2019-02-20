@@ -1,36 +1,35 @@
 ---
-title: "Spatial Data in R: Vector Data"
+title: 'Spatial Data in R: Vector Data'
 author: "By Nick Eubank, building off excellent tutorials by Claudia Engel"
-output:
-  html_document:
-    toc: true
-    toc_depth: 4
-    theme: spacelab
-    mathjax: default
-    fig_width: 6
-    fig_height: 6
+output: 
+  tufte::tufte_handout: default
+  tufte::tufte_html: default
 ---
 
-```{r, knitr_init, echo=FALSE, results='hide', cache=FALSE,message=FALSE, warning=FALSE}
-library(knitr)
-#library(rmdformats)
+
+
+
+
+```{r setup, include=FALSE}
+library(tufte)
+library(xtable)
 
 ## libraries needed for R code examples
 library(sp)
 library(raster)
 library(rgdal)
 
-## Global options
-options(max.print="75")
-opts_chunk$set(echo=TRUE,
-	             cache=TRUE,
-               prompt=FALSE,
-               tidy=TRUE,
-               comment=NA,
-               message=FALSE,
-               warning=FALSE)
-opts_knit$set(width=75)
+## knitr options
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(global.par = TRUE)
 
+# See https://stackoverflow.com/questions/25646333/code-chunk-font-size-in-rmarkdown-with-knitr-and-latex
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) 
+  {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n\\normalsize"), x)
+  })
 ```
 
 ***
@@ -41,7 +40,7 @@ Welcome to Spatial Data in R! This first set of tutorials (in three parts) is pr
 ***
 
 
-## 1 Spatial Data in R: Building Objects from Scratch!
+# 1 Spatial Data in R: Building Objects from Scratch!
 Almost all spatial vector data structures in R are based on the `sp` package. Even other libraries that may seem independent are usually built on top of `sp`, even if you can't see it.
 
 The `sp` package has three main types of spatial data we'll work with: points, lines, and polygons. There are some differences between these different types, but they are all very similar.
@@ -64,12 +63,12 @@ Discuss with your neighbor: What do we need to specify in order to define spatia
 
 ***
 
-### 1.1 SpatialPoints: Your First Spatial* Object!
+## 1.1 SpatialPoints: Your First Spatial* Object!
 
 
 Points are the most basic geometric shape, so we begin by building a `SpatialPoints` object. 
 
-#### Make Points. 
+## Make Points. 
 A points is defined by a pair of x-y coordiantes, so we can create a set of points by (a) creating  matrix of x-y points, and (b) passing them to the `SpatialPoints` function to create our first `SpatialPoints` object:
 
 ```{r}
@@ -96,7 +95,7 @@ summary(my.first.points)
 coordinates(my.first.points)
 ```
 
-#### Add a Coordinate Reference System (CRS)
+## Add a Coordinate Reference System (CRS)
 
 Unlike a simple geometric object, a `SpatialPoints` object has the ability to keep track of how the coordinates of its points relate to places in the real world through an associated "Coordinate Reference System" (CRS -- the combination of a geographic coordinate system and possibly a projection), which is stored using a code called a `proj4string`. The proj4string is so important to a `SpatialPoints` object, that it's presented right in the summary:
 
@@ -108,7 +107,7 @@ In this case, however, while our `SpatialPoints` object clearly knows what a CRS
 
 CRS objects can be created by passing the `CRS()` function the code associated with a known projection. You can find the codes for most commonly used projections from [www.spatialreference.org](www.spatialreference.org). 
 
-Note that the same CRS can often be called in many ways. For example, one of the most commonly used CRS is the WGS84 latitude-longitude projection. You can create a WGS84 lat-long projection object by either passing the reference code for the projection --  `CRS("+init=EPSG:4326"`) -- or by directly calling all its relevant parameters -- `CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")`.
+Note that the same CRS can often be called in many ways. For example, one of the most commonly used CRS is the WGS84 latitude-longitude projection. You can create a WGS84 lat-long projection object by either passing the reference code for the projection --  `CRS("+init=epsg:4326"`) -- or by directly calling all its relevant parameters -- `CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")`.
 
 **Note:** Some users report this only works if `EPSG` is lower-case (`epsg`), so try that if you have issues!
 
@@ -118,7 +117,7 @@ Here's an illustration of assigning a CRS:
 is.projected(my.first.points) # see if a projection is defined. 
   # Returns `NA` if no geographic coordinate system or projection; returns FALSE if has geographic coordinate system but no projection.
 
-crs.geo <- CRS("+init=EPSG:32633")  # UTM 33N
+crs.geo <- CRS("+init=epsg:32633")  # UTM 33N
 proj4string(my.first.points) <- crs.geo  # define projection system of our data
 is.projected(my.first.points)
 summary(my.first.points)
@@ -126,7 +125,7 @@ summary(my.first.points)
 
 When `CRS` is called with only an EPSG code, R will try to complete the CRS with the parameters looked up in the EPSG table:
 ```{r}
-crs.geo <- CRS("+init=EPSG:32633")  # looks up UTM 33N
+crs.geo <- CRS("+init=epsg:32633")  # looks up UTM 33N
 crs.geo # prints all parameters
 ```
 
@@ -139,7 +138,7 @@ my.first.points[1:2]
 ```
 
 
-#### Add Attributes
+## Add Attributes
 
 Moving from a `SpatialPoints` to a `SpatialPointsDataFrame` occurs when you add a `data.frame` of attributes to the points. Let's just add an arbitrary table to the data -- this will label each point with a letter and a number. **Note points will merge with the `data.frame` based on the order of observations.** 
 
@@ -162,12 +161,12 @@ plot(my.first.spdf[which(my.first.spdf$attr2 > 105),])    # select if attr2 > 5
 
 ***
 
-#### SpatialPoint from a lon/lat table
+## SpatialPoint from a lon/lat table
 
 A `SpatialPointsDataFrame` object can be created directly from a `data.frame` by specifying which columns contain the coordinates. This is interesting, for example if you have a spreadsheet that contains latitude, longitude and some values. You can read this into a data frame with `read.table`, and then create the object from the data frame in one step by using the `coordinates()` command. That automatically turns the dataframe object into a `SpatialPointsDataFrame`.
 
 ***
-#### Exercise 1.1
+## Exercise 1.1
 
 1. If you haven't already, create a new directory `R_Workshop` on your Desktop. 
 2. Download and place the `RGIS1_Data` folder from coursework in this directory.
@@ -189,11 +188,11 @@ What to you observe?
 
 ***
 
-### 1.2 SpatialPolygons: Your bread and butter
+## 1.2 SpatialPolygons: Your bread and butter
 
 SpatialPolygons are very, very common, especially in political science (think administrative borders, electoral constituencies, etc.), so they're important to get used to.  
 
-#### Building up a `SpatialPolygons` from scratch. 
+## Building up a `SpatialPolygons` from scratch. 
 
 `SpatialPolygons` are a little more complicated than `SpatialPoints`. With `SpatialPoints`, we moved directly from x-y coordinates to a `SpatialPoints` object. 
 
@@ -245,7 +244,7 @@ houses <-  SpatialPolygons(list(h1,h2))
 plot(houses)
 ```
 
-#### Adding Attributes to SpatialPolygon
+## Adding Attributes to SpatialPolygon
 As with SpatialPoints, we can associated a `data.frame` with SpatialPolygons. There are two things that are important about doing this with SpatialPolygons:
 
 1. When you **first** associate a `data.frame` with a SpatialPolygons object, R will line up rows and polygons by matching `Polygons` object names with the `data.frame` `row.names`. 
@@ -262,15 +261,13 @@ as.data.frame(houses.DF)      # Notice the rows were re-ordered!
 spplot(houses.DF)
 ```
 
-#### Adding a Coordinate Reference Systems (CRS)
+## Adding a Coordinate Reference Systems (CRS)
 As with `SpatialPoints`, a `SpatialPolygons` object on Earth doesn't actually know where it until you set its Coordinate Reference System, which you can do the same way you did with the `SpatialPoints` objects: 
 
 ```{r eval=FALSE}
-crs.geo <- CRS("+init=EPSG:4326")  # geographical, datum WGS84
+crs.geo <- CRS("+init=epsg:4326")  # geographical, datum WGS84
 proj4string(houses.DF) <- crs.geo  # define projection system of our data
 ```
-
-***
 
 **Exercise 1.2**
 *Answer code at end of exercise -- but don't cheat!*
@@ -285,14 +282,16 @@ proj4string(houses.DF) <- crs.geo  # define projection system of our data
 
 The result should look something like this:
 
-![South Africa 2](images/sa_plot_example.png)
+![South Africa 2](images/sa_plot_example.png){ width=300px }
 
 ***
 
-### 1.3 SpatialLines: Just like SpatialPolygons
+\newpage
+
+## 1.3 SpatialLines: Just like SpatialPolygons
 `SpatialLines` objects are basically like `SpatialPolygons`, except they're built up using `Line` objects (each a single continuous line, like each branch of a river), `Lines` objects (collection of lines that form a single unit of analysis, like all the parts of a river), to `SpatialLines` (collection of "observations", like rivers). 
 
-### 1.4 Recap of Spatial* Objects
+## 1.4 Recap of Spatial* Objects
 Here's a quick summary of the construction flow of SpatialObjects:
 
 ![DEM reproject](images/Creating_Spatial_Objects.png)
@@ -330,7 +329,7 @@ readOGR("shapefiles", "sf_incomes")
 
 
 ***
-### Exercise 2
+## Exercise 2
 
 1. Load the `rgdal` package.
 2. Make sure your working directory is set to the `R_Workshop` folder and it contains the materials you downloaded and unzipped earlier.
@@ -401,12 +400,17 @@ df <- data.frame(c(7000,1000), row.names=c("SA","Lesotho"))
 mapDF <- SpatialPolygonsDataFrame(map, df)
 
 # Add WGS 84 coordinate system
-proj4string(mapDF) <- CRS('+init=EPSG:4326')
+proj4string(mapDF) <- CRS('+init=epsg:4326')
 
 # Plot
 spplot(mapDF)
 ```
 
-<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+***
+
+Quest'opera è distribuita con Licenza [Creative Commons Attribuzione 4.0 Internazionale][cc-by].
+La versione originale in lingua inglese è disponibile [qui](http://www.nickeubank.com/gis-in-r/).
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
 
     

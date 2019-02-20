@@ -1,0 +1,102 @@
+---
+title: "Dati spaziali in R: Installazione e Setup"
+author: "Nick Eubank, Claudia Engel; traduzione di Marcello Barisonzi"
+output:
+  tufte::tufte_handout: default
+  tufte::tufte_html: default
+---
+
+```{r knitr_init, echo=FALSE, results='hide', cache=FALSE,message=FALSE, warning=FALSE}
+library(knitr)
+#library(rmdformats)
+
+## libraries needed for R code examples
+library(sp)
+library(raster)
+library(rgdal)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+
+```
+
+***
+
+Benvenuto a _Dati Spaziali in R_! 
+Questa prima serie di esercitazioni (in tre parti) è progettata per fornire un'introduzione 
+ai due tipi di dati spaziali che incontrerete in R: dati vettoriali e dati raster. 
+Alla fine di questo tutorial, dovresti avere una buona idea di come R rappresenta i dati spaziali 
+e di come importare ed esportare i set di dati spaziali che potresti ottenere da altri programmi o fonti.
+
+***
+
+## 1. Installazione di _R_ e _RStudio_
+
+* Gli esempi di queste lezioni sono basate sulla versione 3.5.2 di R; è meglio che tu usi la stessa versione per evitare problemi,
+quindi sei pregato di iniziare aggiornando l'installazione di R a 3.5.2 (versione "Eggshell Igloo").
+[I file di installazione per R 3.5.2 possono essere trovati qui.](http://cran.cnr.berkeley.edu/)
+
+* Scarica la versione più recente di [RStudio qui](https://www.rstudio.com/products/rstudio/download/). 
+RStudio ha recentemente aggiunto alcune funzionalità molto interessanti, quindi aggiorna se hai una versione precedente.
+
+## 2. Installazione delle librerie
+
+Oltre al software di base, abbiamo bisogno di installare alcune librerie R. In questo tutorial, lavoreremo con tre librerie:
+
+* `sp`: per lavorare con i dati vettoriali,
+* `rgdal`: per importare ed esportare dati vettoriali da altri programmi,
+* `raster`: per lavorare con dati raster
+
+__Su Windows:__
+
+Esegui semplicemente: `install.packages(c("sp", "raster", "rgdal"))`
+
+__Su Linux:__
+
+1. Installa i pacchetti `libgdal-dev` e `libproj-dev` e tutte le loro dipendenze
+
+2. Verifica che l'installazione sia corretta digitando `gdal-config`
+
+3. esegui nella console R: `install.packages(c("sp", "raster", "rgdal"))`
+
+__Sul Mac: __
+
+1. Scarica [GDAL completo](http://www.kyngchaos.com/files/software/frameworks/GDAL_Complete-2.3.dmg)
+
+2. Fai doppio clic e installa il file `.dmg` come sei abituato su un Mac
+
+3. Assicurati di aver installato R Version 3.5.2 - se no, aggiornalo.
+
+4. Scarica il pacchetto [rgdal](https://cran.r-project.org/bin/macosx/el-capitan/contrib/3.5/rgdal_1.3-6.tgz) da CRAN.
+
+5. Inserisci il file `rgdal_1.3-6.tgz` scaricato nella cartella _Desktop_
+
+7. Esegui `install.packages("~/Desktop/rgdal1.3-6.tgz", repos = NULL)`
+
+8. Installa `raster` e `sp` eseguendo: `install.packages(c("sp", "raster"))`
+
+## 3. Verifica dell'installazione
+
+Se tutto è andato bene, i seguenti tre comandi dovrebbero essere eseguiti senza problemi!
+
+    library(sp)
+    library(rgdal)
+    library(raster)
+
+***
+
+Quest'opera è distribuita con Licenza [Creative Commons Attribuzione 4.0 Internazionale][cc-by].
+La versione originale in lingua inglese è disponibile [qui](http://www.nickeubank.com/gis-in-r/).
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
+
+
+    

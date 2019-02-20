@@ -102,7 +102,7 @@ vario.ex <- variog(sic.100, bin.cloud=TRUE)
 plot(vario.ex)
 ```
 
-Il variogramma prodotto assume un effetto isotropico, ma possiamo anche tracciare 4 variogrammi a seconda di quattro direzioni (a $0^o$, $45^o$, $90^o$ e $135^o$ rispetto all'asse $Y$):
+Il variogramma prodotto presume un fenomeno isotropico, ma possiamo anche tracciare 4 variogrammi a seconda di quattro direzioni (a $0^o$, $45^o$, $90^o$ e $135^o$ rispetto all'asse $Y$):
 
 ```{R, eval=TRUE}
 vario4 <- variog4(sic.100)
@@ -163,9 +163,18 @@ E per finire, chiediamo al modello di _kriging_ di stimare la precipitazione e l
 
 ```{R, eval=TRUE}
 kc <- krige.conv(sic.100, loc=pred.grid, krige=krige.model)
+par(mfrow=c(1,2))
 image(kc, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Stima della precipitazione") # stima
 image(kc, krige.var, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Varianza") # varianza, contenuta in krige.var
 ```
+
+***
+
+## Esercizio 1
+
+Prova a sovrapporre i punti dell'insieme `sic.100`, usati per il modello di interpolazione, al grafico della varianza. Che cosa noti?
+
+***
 
 Il modello sembra convincente, ma non sappiamo quanto sia accurato. Per poter fare una valutazione, tracciamo i residui per le 100 osservazioni che abbiamo usato per il nostro modello di interpolazione, ma anche per le 367 osservazioni che non abbiamo utilizzato, e che quindi rappresentano un valido campione di controllo.
 
@@ -180,9 +189,62 @@ abline(a=0, b=1, col="red")
 
 Per i punti di interpolazione, i valori sono esattamente sulla bisettrice, il che ci indica che il nostro modello di _kriging_ non è _biased_. Stessa considerazione si può fare per il campione di controllo, quindi la nostra modellizzazione è accettabile.
 
-## Esercizio 1
+Possiamo calcolare anche l'errore quadratico medio (_RMSE_) di questo modello. Per prima cosa definiamo la funzione che calcola l'errore quadratico medio:
 
-Prova a sovrapporre i punti dell'insieme `sic.100`, usati per il modello di interpolazione, al grafico della varianza. Che cosa noti?
+```{R, eval=TRUE}
+rmse <- function(error)
+{
+    sqrt(mean(error^2))
+}
+
+```
+
+Poi calcoliamo l'errore come differenza tra i dati misurati e la predizione del modello, e applichiamo la formula:
+
+```{R, eval=TRUE}
+error.1 = sic.367$data - kc.367$predict
+rmse(error.1)
+```
+
+Il valore di _RMSE_ del nostro modello è `r sprintf("%.1f", rmse(error.1))`, è un valore basso o alto? _RMSE_ non ha senso in valore assoluto, ma ha senso se si comparano due modelli.
+Per fare la comparazione, prendiamo un modello _baseline_, estremamente semplice, che assume che su tutta la Svizzera la quantità di precipitazioni sia esattamente pari alla precipitazione media.
+La predizione del nostro modello di _baseline_ sarà quindi il valore medio ripetuto 367 volte, e il calcolo di _RMSE_ è lo stesso:
+
+```{R, eval=TRUE}
+baseline.pred=rep(1:367, each=mean(sic.367$data))
+error.2 = sic.367$data - baseline.pred
+rmse(error.2)
+```
+
+Lo _RMSE_ del modello di _baseline_ è circa `r round(rmse(error.2)/rmse(error.1))` volte lo _RMSE_ del modello di _kriging_, ciò indica che quest'ultimo è migliore nel descrivere i dati.
+
+# Trasformazioni dei dati
+
+```{R, eval=TRUE}
+par(mfrow=c(1,1))
+vario.ext <- variog(sic.100, option = "bin", lambda = 0.5)
+vario.sphe2 <-(variofit(vario.ext, cov.model="spherical", ini.cov.pars=c(100,50)))
+plot(vario.ext)
+lines.variomodel(cov.model="spherical", cov.pars=vario.sphe2$cov.pars, max.dist = 300, nug=vario.sphe2$nugget)
+
+krige.model.t <- krige.control(obj.model=vario.sphe2, lambda=0.5)
+#krige.model.t <- krige.control(cov.model="matern", cov.pars=c(105, 36), kappa=1, nugget=6.9, lambda=0.5)
+kct <- krige.conv(sic.100, loc=pred.grid, krige=krige.model.t)
+par(mfrow=c(1,2))
+image(kct, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Stima della precipitazione") # stima
+image(kct, krige.var, loc=pred.grid, col=rgb.palette(20), borders=sic.borders, main="Varianza")
+
+kct.100 <- krige.conv(sic.100, loc=sic.100$coords, krige=krige.model.t)
+kct.367 <- krige.conv(sic.100, loc=sic.367$coords, krige=krige.model.t) # il primo parametro è lo stesso della linea precedente. Perché?
+plot(sic.100$data, kct.100$predict, xlab="Osservazioni", ylab="Stime", main="Punti di interpolazione")
+abline(a=0, b=1, col="red")
+plot(sic.367$data, kct.367$predict, xlab="Osservazioni", ylab="Stime", main="Campione di controllo")
+abline(a=0, b=1, col="red")
+
+error.3 = sic.367$data - kct.367$predict
+rmse(error.3)
+
+```
 
 \newpage
 
