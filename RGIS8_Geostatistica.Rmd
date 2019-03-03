@@ -6,6 +6,8 @@ output:
     fig_width: 12
     fig_height: 9
   tufte::tufte_html: default
+header-includes:
+   - \usepackage[italian]{babel}
 ---
 
 

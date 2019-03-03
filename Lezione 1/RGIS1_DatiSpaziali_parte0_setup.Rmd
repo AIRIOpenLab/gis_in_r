@@ -1,6 +1,8 @@
 ---
 title: "Dati spaziali in R: Installazione e Setup"
 author: "Nick Eubank, Claudia Engel; traduzione di Marcello Barisonzi"
+header-includes:
+   - \usepackage[italian]{babel}
 output:
   tufte::tufte_handout: default
   tufte::tufte_html: default
