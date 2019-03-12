@@ -1,0 +1,127 @@
+---
+title: "Dati spaziali in R: dati raster"
+author: "Nick Eubank, Claudia Engel; traduzione di Marcello Barisonzi"
+output: 
+  tufte::tufte_handout: default
+  tufte::tufte_html: default  
+header-includes:
+   - \usepackage[italian]{babel}
+---
+
+```{r knitr_init, echo=FALSE, results='hide', cache=FALSE,message=FALSE, warning=FALSE}
+library(knitr)
+#library(rmdformats)
+
+## libraries needed for R code examples
+library(sp)
+library(raster)
+library(rgdal)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+
+```
+
+***
+
+Benvenuto a _Dati Spaziali in R_! 
+Questa prima serie di esercitazioni (in tre parti) è progettata per fornire un'introduzione 
+ai due tipi di dati spaziali che incontrerete in R: dati vettoriali e dati raster. 
+Alla fine di questo tutorial, dovresti avere una buona idea di come R rappresenta i dati spaziali 
+e di come importare ed esportare i set di dati spaziali che potresti ottenere da altri programmi o fonti.
+
+***
+
+
+# 1. Creare Dati Raster da zero
+
+I raster sono molto più compatti dei vettori. A causa della loro struttura regolare, le coordinate non devono essere registrate per ciascun pixel o cella nell'estensione rettangolare. Un raster ha un CRS, un'origine, una distanza o una dimensione della cella in ciascuna direzione, una dimensione in termini di numeri di celle e una matrice di valori. Se necessario, è possibile calcolare le coordinate per ogni cella.
+
+Si noti che la libreria `sp` utilizzata per i dati vettoriali ha alcuni strumenti di base per manipolare i dati raster. Tuttavia, la libreria `sp` è stata in gran parte sostituita dalla libreria` raster` che useremo qui, e tutto ciò che si può fare con la libreria `sp` può essere fatto anche con la libreria` raster`.
+
+Un set di dati raster ha tre componenti principali:
+
+* Una griglia, che consiste in:
+    + dimensioni (numero di righe e colonne),
+    + risoluzione (dimensione dei lati di ciascuna cella),
+    + estensione (dove sono i bordi della griglia)
+* Un insieme di valori associati a ciascuna cella nella griglia
+* Dati di proiezione su come la griglia si riferisce al mondo fisico
+
+È relativamente semplice inizializzare un oggetto raster definendo la griglia, ad esempio una matrice di 5 righe per 10 colonne:
+
+```{r}
+basic_raster <- raster(ncol=5, nrow=10, xmn=0, xmx=5, ymn=0, ymx=10)
+basic_raster
+```
+
+Tuttavia, nota che questo raster ha una griglia, ma nessun dato:
+
+```{r}
+hasValues(basic_raster)
+```
+
+Aggiungiamo dati all'oggetto raster usando la funzione `values`:
+
+```{r}
+values(basic_raster) <- 1:50  # Nota: 50 è il numero totale di celle nella griglia. 
+plot(basic_raster)
+```
+
+**Nota: anche se una griglia è un oggetto bidimensionale, `raster` cerca dati che sono unidimensionali,** 
+quindi assegna i valori in DataFrame: (a) iniziando dalla cella in alto a sinistra, quindi (b) muovendosi attraverso la riga da sinistra a destra, e infine (c) spostandosi verso il basso di una riga e ripetendo l'intero processo.
+Quindi ogni colonna deve essere la lunghezza del numero totale di celle.
+
+
+## 1.1 Definizione della proiezione
+Per definire una proiezione, utilizziamo le stesse stringhe _proj4_ come per i dati vettoriali, ma senza la fase intermedia della creazione di un oggetto CRS:
+
+```{R}
+projection(basic_raster) <- "+init=epsg:4326"
+```
+
+# 2. Lettura di dati raster dai file
+
+La libreria `raster` può anche leggere molti tipi di file. Ad esempio, carichiamo i dati dell'elevazione altimetrica della città di San Francisco.
+
+```{R, eval=TRUE}
+raster_from_file <- raster("data/SanFranciscoNorth.dem")
+plot(raster_from_file)
+```
+
+# 3. Modifica e interrogazione di oggetti `raster`
+
+La libreria `raster` ha alcune funzioni che possono essere utilizzate per guardare una proprietà o per cambiare una proprietà a seconda che si tenti di impostare un valore. Per esempio:
+
+* Verifica la risoluzione: `res(basic_raster)`
+* Cambia risoluzione: `res(basic_raster) <- c(valore_x, valore_y)`
+
+* Controlla il numero di colonne: `ncol(basic_raster)`
+* Cambia il numero di colonne: `ncol(basic_raster) <- nuovo_valore`
+
+Tuttavia, **fai attenzione con questi comandi** - se cambi il numero di colonne o righe, questo cambierà necessariamente la risoluzione e viceversa! Inoltre, **se cambi le dimensioni, tutti i valori associati ai dati verranno cancellati.**
+
+***
+
+# Esercizio 3
+
+1. Assicurati che la directory di lavoro sia impostata sulla cartella `Lezione 1` e contenga i materiali che hai scaricato e decompresso in precedenza.
+2. Leggi i dati con: `raster_from_file <- raster("data/SanFranciscoNorth.dem")`
+3. Qual è l'estensione di questo raster?
+4. Qual è la proiezione?
+5. Traccia il raster con: `plot(raster_from_file)`
+
+***
+
+Quest'opera è distribuita con Licenza [Creative Commons Attribuzione 4.0 Internazionale][cc-by].
+La versione originale in lingua inglese è disponibile [qui](http://www.nickeubank.com/gis-in-r/).
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
